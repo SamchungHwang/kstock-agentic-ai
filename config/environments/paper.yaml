@@ -1,0 +1,6 @@
+schema_version: "1.0"
+environment: PAPER
+account_alias: paper-main
+gate_initial_state: CLOSED
+credential_profile: kis-paper
+runtime_namespace: paper

@@ -1,0 +1,7 @@
+schema_version: "1.0"
+environment: LIVE
+account_alias: live-main
+gate_initial_state: CLOSED
+credential_profile: kis-live
+runtime_namespace: live
+# 비밀값은 기록하지 않는다.

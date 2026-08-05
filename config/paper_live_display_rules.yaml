@@ -1,0 +1,25 @@
+schema_version: "1.0"
+implicit_live_allowed: false
+initial_gate: CLOSED
+unknown_is_safe_to_trade: false
+repeat_environment_in:
+  - window_title
+  - safety_status_bar
+  - proposal_card
+  - confirmation_dialog
+  - execution_log
+isolation:
+  credentials: REQUIRED
+  ledger: REQUIRED
+  audit: REQUIRED
+  identifiers: REQUIRED
+  session: REQUIRED
+  cross_environment_object_reuse: DENY
+live_confirmation:
+  manual_input_only: true
+  prefill: DENY
+  clipboard_fill: DENY
+  format: "LIVE {SIDE} {SYMBOL} {QUANTITY} {LIMIT_PRICE}"
+  creates_order_parameters: false
+  final_pretrade_guard_required: true
+  one_time_submit_permit_required: true

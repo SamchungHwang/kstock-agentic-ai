@@ -1,0 +1,19 @@
+schema_version: "1.0"
+current_stage: V1
+stages:
+  V1:
+    authority: NONE
+    description: "관측·조회·대사·감사·정지 요청"
+  V2:
+    authority: APPROVAL_RECORD_ONLY
+    description: "AI 판단·사이징·OrderProposal 승인 기록"
+  V3:
+    authority: APPROVED_INTENT_SUBMISSION
+    description: "승인된 OrderIntent의 제한적 제출"
+features:
+  safety_status_bar: {V1: IMPLEMENTED, V2: RETAINED, V3: RETAINED}
+  reconciliation: {V1: IMPLEMENTED, V2: RETAINED, V3: RETAINED}
+  kill_switch: {V1: IMPLEMENTED, V2: RETAINED, V3: RETAINED}
+  judge_card: {V1: CONTRACT_ONLY, V2: IMPLEMENTED, V3: RETAINED}
+  live_confirmation: {V1: NOT_AVAILABLE, V2: CONTRACT_ONLY, V3: IMPLEMENTED}
+  order_submission: {V1: NOT_AVAILABLE, V2: NOT_AVAILABLE, V3: IMPLEMENTED}
