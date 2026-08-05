@@ -1,3 +1,2 @@
-"""K-Stock Agentic AI backend package."""
-
-__version__ = "0.1.0"
+"""K-Stock Console V1 practice package."""
+__version__ = "0.4.0"

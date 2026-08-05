@@ -1,28 +1,16 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kstock-agentic-ai"
-version = "0.1.0"
-description = "CLI-First investment operating system for Korean equities"
-readme = "README.md"
+name = "kstock-console-v1"
+version = "0.6.0"
+description = "K-Stock AI Agent Console V1 practice implementation"
 requires-python = ">=3.11"
 dependencies = []
-
-[project.optional-dependencies]
-dev = ["pytest>=8.0"]
-
-[project.scripts]
-kstock = "kstock.cli.__main__:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.pytest.ini_options]
-addopts = "-q"
-testpaths = ["tests"]
-pythonpath = [".", "src"]

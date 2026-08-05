@@ -1,0 +1,24 @@
+K-Stock Console V1 v6 환경변수 패치
+
+1. 이 패치를 프로젝트 루트 C:\ai\kstock-agentic-ai 에 상대 경로 그대로 덮어쓴다.
+2. .env.example을 .env로 복사한다.
+
+   PowerShell:
+   Copy-Item .env.example .env
+
+3. .env에 모의투자 값을 입력한다.
+
+   KIS_PAPER_APP_KEY
+   KIS_PAPER_APP_SECRET
+   KIS_PAPER_ACCOUNT
+   KIS_PAPER_ACCOUNT_PRODUCT
+
+4. 환경변수를 점검한다.
+
+   python .\tools\doctor_env.py --environment PAPER
+
+5. 시험을 실행한다.
+
+   python -m pytest -q
+
+주의: .env는 비밀 파일이다. Git에 커밋하지 않는다.
