@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "title": "Console V2·V3 CLI 입출력 계약",
+  "commands": {
+    "judge run": {
+      "inputs": ["evidence_packet_id", "strategy_id"],
+      "output_type": "JudgeRunResult",
+      "statuses": ["SUCCESS", "BLOCKED", "ERROR"],
+      "min_version": "V2",
+      "forbidden_args": ["symbol", "qty", "price"]
+    },
+    "thesis validate": {
+      "inputs": ["draft_id"],
+      "output_type": "InvestmentThesis",
+      "statuses": ["SUCCESS", "BLOCKED", "ERROR"],
+      "min_version": "V2",
+      "forbidden_args": ["qty", "price"]
+    },
+    "portfolio size": {
+      "inputs": ["thesis_id", "account_snapshot_id"],
+      "output_type": "SizingResult",
+      "statuses": ["SUCCESS", "UNKNOWN", "ERROR"],
+      "min_version": "V2",
+      "forbidden_args": ["qty", "price"]
+    },
+    "proposal decide": {
+      "inputs": ["proposal_id", "decision"],
+      "output_type": "ProposalDecision",
+      "statuses": ["SUCCESS", "BLOCKED", "ERROR"],
+      "min_version": "V2",
+      "forbidden_args": ["qty", "price"]
+    },
+    "intent issue": {
+      "inputs": ["approved_proposal_id"],
+      "output_type": "OrderIntent",
+      "statuses": ["SUCCESS", "BLOCKED", "ERROR"],
+      "min_version": "V3_PAPER",
+      "forbidden_args": ["symbol", "qty", "price"]
+    },
+    "order submit-approved": {
+      "inputs": ["intent_id"],
+      "output_type": "BrokerOrderResult",
+      "statuses": ["SUCCESS", "BLOCKED", "UNKNOWN", "ERROR"],
+      "min_version": "V3_PAPER",
+      "forbidden_args": ["symbol", "qty", "price"],
+      "automatic_retry_on_unknown": false
+    }
+  }
+}

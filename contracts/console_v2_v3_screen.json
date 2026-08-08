@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "title": "Console V2·V3 화면 계약",
+  "versions": {
+    "V1": {
+      "panels": ["startup", "query", "reconcile", "kill_switch", "audit"],
+      "core_permissions": ["READ", "HALT", "RECOVER"],
+      "forbidden": ["JUDGE", "PROPOSAL", "BROKER_SUBMIT"]
+    },
+    "V2": {
+      "panels": ["startup", "query", "reconcile", "kill_switch", "audit", "evidence_judge", "thesis_review", "sizing", "proposal"],
+      "core_permissions": ["READ", "HALT", "RECOVER", "JUDGE", "REVIEW", "PROPOSAL_DECISION"],
+      "forbidden": ["BROKER_SUBMIT", "RAW_ORDER_INPUT"]
+    },
+    "V3_PAPER": {
+      "panels": ["startup", "query", "reconcile", "kill_switch", "audit", "evidence_judge", "thesis_review", "sizing", "proposal", "approved_intent_submit"],
+      "core_permissions": ["READ", "HALT", "RECOVER", "JUDGE", "REVIEW", "PROPOSAL_DECISION", "INTENT_ISSUE", "BROKER_SUBMIT_PAPER"],
+      "forbidden": ["RAW_ORDER_INPUT", "LIVE_SUBMIT"]
+    }
+  },
+  "v3_submit_panel": {
+    "visible_fields": ["intent_id", "symbol_readonly", "qty_readonly", "price_readonly", "guard_state", "intent_expiry"],
+    "editable_fields": [],
+    "buttons": ["submit_approved_intent", "cancel_open_order", "halt_trading"],
+    "raw_order_form": false
+  }
+}

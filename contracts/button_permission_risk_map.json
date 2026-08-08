@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "title": "버튼–권한–위험등급 매핑",
+  "buttons": [
+    {"key": "judge_run", "label": "Judge 실행", "min_version": "V2", "permission": "JUDGE_DRAFT", "risk_class": "R1", "confirmation": null, "always_available": false},
+    {"key": "thesis_validate", "label": "Thesis 검증", "min_version": "V2", "permission": "THESIS_VALIDATE", "risk_class": "R1", "confirmation": null, "always_available": false},
+    {"key": "portfolio_size", "label": "사이징 계산", "min_version": "V2", "permission": "PORTFOLIO_SIZE", "risk_class": "R1", "confirmation": null, "always_available": false},
+    {"key": "proposal_approve", "label": "Proposal 승인", "min_version": "V2", "permission": "PROPOSAL_APPROVE", "risk_class": "R2", "confirmation": "CONFIRM", "always_available": false},
+    {"key": "proposal_reject", "label": "Proposal 거절", "min_version": "V2", "permission": "PROPOSAL_REJECT", "risk_class": "R0", "confirmation": "REASON_REQUIRED", "always_available": false},
+    {"key": "proposal_revision", "label": "수정 요청", "min_version": "V2", "permission": "PROPOSAL_REVISION", "risk_class": "R1", "confirmation": "REASON_REQUIRED", "always_available": false},
+    {"key": "submit_approved_intent", "label": "Intent 제출", "min_version": "V3_PAPER", "permission": "BROKER_SUBMIT_PAPER", "risk_class": "R3", "confirmation": "CONFIRM", "always_available": false},
+    {"key": "halt_trading", "label": "거래 정지", "min_version": "V1", "permission": "HALT_NEW_RISK", "risk_class": "R0", "confirmation": null, "always_available": true},
+    {"key": "cancel_open_order", "label": "미체결 취소", "min_version": "V1", "permission": "CANCEL_OPEN_ORDER", "risk_class": "R1", "confirmation": "CONFIRM", "always_available": true}
+  ]
+}

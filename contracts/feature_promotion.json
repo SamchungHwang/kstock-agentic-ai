@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "title": "단계별 기능 승격",
+  "features": {
+    "safe_start_reconcile_halt": {"V1": true, "V2": true, "V3_PAPER": true, "LIVE": true},
+    "opendart_collect_replay": {"V1": true, "V2": true, "V3_PAPER": true, "LIVE": true},
+    "ai_judge_draft": {"V1": false, "V2": true, "V3_PAPER": true, "LIVE": true},
+    "investment_thesis_review": {"V1": false, "V2": true, "V3_PAPER": true, "LIVE": true},
+    "sizing_proposal": {"V1": false, "V2": true, "V3_PAPER": true, "LIVE": true},
+    "order_intent_issue": {"V1": false, "V2": false, "V3_PAPER": true, "LIVE": true},
+    "broker_order_submit": {"V1": false, "V2": false, "V3_PAPER": "PAPER_ONLY", "LIVE": "SEPARATE_PROMOTION_REQUIRED"},
+    "auto_approve_submit": {"V1": false, "V2": false, "V3_PAPER": false, "LIVE": false},
+    "raw_order_cli": {"V1": false, "V2": false, "V3_PAPER": false, "LIVE": false}
+  },
+  "v3_paper_evidence": [
+    "v1_safe_operations_passed",
+    "reconciliation_clean",
+    "audit_healthy",
+    "kill_switch_off",
+    "no_unknown_orders",
+    "v2_contract_tests_passed",
+    "paper_environment"
+  ],
+  "dynamic_capabilities": {
+    "BROKER_SUBMIT_PAPER": {
+      "requires_all": [
+        "v1_safe_operations_passed",
+        "reconciliation_clean",
+        "audit_healthy",
+        "kill_switch_off",
+        "no_unknown_orders",
+        "v2_contract_tests_passed",
+        "paper_environment"
+      ],
+      "disable_immediately_when_evidence_missing": true
+    }
+  }
+}
