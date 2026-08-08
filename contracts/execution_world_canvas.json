@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "name": "K-Stock Execution World Canvas",
+  "axes": {
+    "entity": {
+      "question": "무엇이 독립적으로 존재하는가",
+      "answer": ["Issuer", "Security", "Account", "Position", "InvestmentThesis", "Order", "Approval"]
+    },
+    "state": {
+      "question": "지금 무엇이 사실인가",
+      "answer": ["OBSERVED", "OPERATIONAL", "DERIVED"]
+    },
+    "transition": {
+      "question": "어떤 사건이 상태를 바꾸는가",
+      "answer": "허용 전이표 + IllegalTransition"
+    },
+    "constraint": {
+      "question": "무엇은 넘어설 수 없는가",
+      "answer": ["approval", "gate", "reconciliation", "audit", "environment"]
+    },
+    "time": {
+      "question": "언제의 사실인가",
+      "answer": ["occurred_at", "as_of", "published_at", "fetched_at", "recorded_at"]
+    },
+    "market": {
+      "question": "어디에서 성립하는가",
+      "answer": ["KRX", "PAPER", "LIVE", "account_ref"]
+    },
+    "actor": {
+      "question": "누가 관측·판단·변경했는가",
+      "answer": ["BROKER", "OWNER", "WORKER", "JUDGE"]
+    },
+    "authority": {
+      "question": "무엇을 최종적으로 믿는가",
+      "answer": ["BROKER", "LEDGER", "POLICY_BUNDLE", "AUDIT"]
+    },
+    "commit": {
+      "question": "언제 권한/경제 상태가 확정되는가",
+      "answer": ["CONTROL_COMMIT", "ECONOMIC_COMMIT"]
+    }
+  },
+  "identity_relations": [
+    "Issuer 1:N Security",
+    "Account 1:N Position",
+    "Position N:1 Security",
+    "Thesis -> Issuer/Security",
+    "Approval -> immutable target id/hash",
+    "Order -> Account + Security + Intent"
+  ],
+  "authorities": {
+    "BROKER": ["cash", "holdings", "broker_order", "fill"],
+    "LEDGER": ["execution_state", "control_state", "order_state"],
+    "POLICY_BUNDLE": ["allowed_rules", "limits", "environment_permissions"],
+    "AUDIT": ["who", "when", "why", "correlation_trace"]
+  },
+  "flow": [
+    "OBSERVATION",
+    "JUDGMENT",
+    "PROPOSAL",
+    "CONTROL_COMMIT",
+    "ORDER_SUBMISSION_BOUNDARY",
+    "ECONOMIC_COMMIT",
+    "RECONCILIATION"
+  ]
+}

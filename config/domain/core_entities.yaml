@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "format_note": "JSON-compatible YAML 1.2; stdlib json loader is sufficient",
+  "entities": {
+    "issuer": {
+      "id_type": "IssuerId",
+      "identity_source": "corp_master",
+      "owns_economic_identity": true
+    },
+    "security": {
+      "id_type": "SecurityId",
+      "identity_source": "security_master",
+      "belongs_to": "issuer",
+      "order_target": true
+    },
+    "account": {
+      "id_type": "AccountRef",
+      "identity_source": "credentials_mapping",
+      "environment_required": true
+    },
+    "position": {
+      "identity": ["account_ref", "security_id"],
+      "economic_authority": "broker_account",
+      "derived_copy_owner": "ledger"
+    },
+    "investment_thesis": {
+      "id_type": "ThesisId",
+      "created_by": "deterministic_boundary",
+      "draft_is_not_entity": true,
+      "immutable_after_issue": true
+    },
+    "order": {
+      "id_type": "OrderId",
+      "broker_identity": "broker_order_id",
+      "state_owner": "ledger.order_store",
+      "broker_order_id_must_come_from": "broker_event"
+    },
+    "approval": {
+      "id_type": "ApprovalId",
+      "immutable_target_hash_required": true,
+      "append_only": true
+    }
+  }
+}
