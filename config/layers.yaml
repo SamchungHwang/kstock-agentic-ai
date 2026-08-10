@@ -1,0 +1,13 @@
+version: 3
+special_rules:
+  - LLM provider imports only under kstock.judge
+  - cross_boundary exists only in kstock.judge.boundary
+  - portfolio must not import kstock.broker
+  - guard must not import kstock.judge
+  - guard must not import kstock.portfolio
+  - guard must not import kstock.broker
+  - broker submit exists only under kstock.broker
+  - raw symbol/qty/price submit CLI is forbidden
+  - broker derives submission_key from intent_id
+  - invalidation evaluator may create ReevaluationRequest only
+  - invalidation evaluator must not create OrderIntent or BrokerRequest
