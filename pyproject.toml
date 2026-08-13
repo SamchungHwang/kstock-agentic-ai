@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kstock-console-v1"
-version = "0.8.0"
-description = "K-Stock AI Agent Console V1 + Chapter 4 V2/V3 contracts + Chapter 5 execution world contracts"
+version = "0.9.0"
+description = "K-Stock Agentic AI - single user, one fixed account per PAPER/LIVE environment"
 requires-python = ">=3.11"
 dependencies = []
 

@@ -41,7 +41,6 @@ EXIT_CODE_STATUS = {
 class CommandContext:
     environment: Environment
     correlation_id: str
-    account_alias: str = ""
     reason: str = ""
 
 ArgBuilder = Callable[[CommandContext], list[str]]
@@ -86,11 +85,6 @@ def status_from_exit_code(code: int) -> ResultStatus:
 def _none(_: CommandContext) -> list[str]:
     return []
 
-def _account(ctx: CommandContext) -> list[str]:
-    if not ctx.account_alias:
-        raise ValueError("account_alias is required")
-    return ["--account-alias", ctx.account_alias]
-
 def _reason(ctx: CommandContext) -> list[str]:
     if not ctx.reason.strip():
         raise ValueError("reason is required")
@@ -100,9 +94,9 @@ def build_registry() -> dict[str, CommandSpec]:
     specs = [
         CommandSpec("quick_check", "빠른 점검", ("preflight", "quick"), RiskClass.READ_ONLY, LockGroup.GENERAL, _none),
         CommandSpec("full_check", "전체 점검", ("preflight", "full"), RiskClass.READ_ONLY, LockGroup.GENERAL, _none),
-        CommandSpec("account_summary", "계좌 조회", ("account", "summary"), RiskClass.READ_ONLY, LockGroup.EXTERNAL_QUERY, _account),
+        CommandSpec("account_summary", "계좌 조회", ("account", "summary"), RiskClass.READ_ONLY, LockGroup.EXTERNAL_QUERY, _none),
         CommandSpec("disclosure_collect", "공시 수집", ("disclosure", "collect"), RiskClass.READ_ONLY, LockGroup.EXTERNAL_QUERY, _none),
-        CommandSpec("reconcile_run", "대사 실행", ("reconcile", "run"), RiskClass.READ_ONLY, LockGroup.GENERAL, _account),
+        CommandSpec("reconcile_run", "대사 실행", ("reconcile", "run"), RiskClass.READ_ONLY, LockGroup.GENERAL, _none),
         CommandSpec("gate_status", "게이트 상태", ("gate", "status"), RiskClass.READ_ONLY, LockGroup.GENERAL, _none),
         CommandSpec("audit_recent", "감사 조회", ("audit", "recent"), RiskClass.READ_ONLY, LockGroup.GENERAL, _none),
         CommandSpec("gate_close", "거래 정지", ("gate", "close"), RiskClass.CONTROL, LockGroup.CONTROL, _reason, always_available=True),

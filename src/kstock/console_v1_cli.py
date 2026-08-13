@@ -33,13 +33,14 @@ from .demo_services import (
     start_console_session,
 )
 from .models import ResultStatus
+from .state_store import configure_runtime_environment
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="K-Stock Console V1 demo CLI")
     parser.add_argument("group")
     parser.add_argument("action")
-    parser.add_argument("--environment", type=str.upper, choices=["PAPER", "LIVE"], default="PAPER")
+    parser.add_argument("--environment", type=str.upper, choices=["PAPER", "LIVE"], required=True)
     parser.add_argument("--correlation-id", required=True)
     parser.add_argument("--output", default="jsonl", choices=["jsonl"])
     parser.add_argument("--confirmation", default="")
@@ -122,6 +123,7 @@ def dispatch(args):
 def main(argv: list[str] | None = None) -> int:
     force_utf8_stdio()
     args = build_parser().parse_args(argv)
+    configure_runtime_environment(args.environment)
     emitter = JsonlEmitter(args.correlation_id)
     emitter.progress("dispatch", f"{args.group} {args.action} 실행 중")
     try:

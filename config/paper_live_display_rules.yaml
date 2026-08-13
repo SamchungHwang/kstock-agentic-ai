@@ -1,7 +1,14 @@
-schema_version: "1.0"
+schema_version: "2.0"
 implicit_live_allowed: false
 initial_gate: CLOSED
 unknown_is_safe_to_trade: false
+operating_scope:
+  human_user: OWNER
+  runtime_account_selection: DENY
+  runtime_environment_switch: DENY
+fixed_accounts:
+  PAPER: PAPER_PRIMARY
+  LIVE: LIVE_PRIMARY
 repeat_environment_in:
   - window_title
   - safety_status_bar

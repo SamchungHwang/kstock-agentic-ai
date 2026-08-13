@@ -51,7 +51,7 @@ class Worker:
         self.events.put(("finished", (key, process.wait())))
 
 class ConsoleApp(ttk.Frame):
-    def __init__(self, master: tk.Tk) -> None:
+    def __init__(self, master: tk.Tk, environment: Environment) -> None:
         super().__init__(master, padding=12)
         self.master = master
         self.registry = build_registry()
@@ -59,21 +59,21 @@ class ConsoleApp(ttk.Frame):
         self.general_worker = Worker(self.events)
         self.control_worker = Worker(self.events)
         self.buttons: dict[str, ttk.Button] = {}
-        self.environment = tk.StringVar(value="PAPER")
-        self.account_alias = tk.StringVar(value="paper-main")
+        self.environment = environment
+        self.account_ref = "PAPER_PRIMARY" if environment is Environment.PAPER else "LIVE_PRIMARY"
         self.status = tk.StringVar(value="○ 대기")
         self.grid(sticky="nsew")
         self._build()
         self.after(100, self._poll)
 
     def _build(self) -> None:
-        self.master.title("K-Stock Console [PAPER]")
+        self.master.title(f"K-Stock Console [{self.environment.value}] {self.account_ref}")
         header = ttk.Frame(self)
         header.grid(row=0, column=0, sticky="ew")
-        ttk.Label(header, text="환경").pack(side="left")
-        ttk.Combobox(header, textvariable=self.environment, values=["PAPER", "LIVE"], state="readonly", width=8).pack(side="left", padx=6)
-        ttk.Label(header, text="계좌 별칭").pack(side="left")
-        ttk.Entry(header, textvariable=self.account_alias, width=18).pack(side="left", padx=6)
+        ttk.Label(
+            header,
+            text=f"환경 {self.environment.value} · 고정계좌 {self.account_ref} · 사용자 OWNER",
+        ).pack(side="left")
         ttk.Label(header, textvariable=self.status).pack(side="right")
         controls = ttk.LabelFrame(self, text="Console V1 명령")
         controls.grid(row=1, column=0, sticky="ew", pady=8)
@@ -95,9 +95,9 @@ class ConsoleApp(ttk.Frame):
                 return
         try:
             ctx = CommandContext(
-                environment=Environment(self.environment.get()),
+                environment=self.environment,
                 correlation_id=f"corr_{uuid.uuid4().hex[:12]}",
-                account_alias=self.account_alias.get().strip(), reason=reason,
+                reason=reason,
             )
             argv = spec.argv(ctx, [sys.executable, "-m", "kstock.cli"])
             worker = self.control_worker if spec.always_available else self.general_worker
@@ -144,6 +144,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--print", dest="print_manifest", action="store_true")
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--environment", choices=["PAPER", "LIVE"], default="PAPER")
     return parser.parse_args(argv)
 
 def run_check() -> int:
@@ -155,7 +156,7 @@ def run_check() -> int:
         failures.append("Console V1 contains ECONOMIC command")
     if not any(s.always_available for s in registry.values()):
         failures.append("always-available control command is missing")
-    ctx = CommandContext(Environment.PAPER, "corr_check", "paper-main", "headless check")
+    ctx = CommandContext(Environment.PAPER, "corr_check", "headless check")
     for spec in visible_specs(registry):
         try:
             argv = spec.argv(ctx, [sys.executable, "-m", "kstock.cli"])
@@ -178,7 +179,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.check:
         return run_check()
     root = tk.Tk()
-    ConsoleApp(root)
+    ConsoleApp(root, Environment(args.environment))
     root.mainloop()
     return 0
 

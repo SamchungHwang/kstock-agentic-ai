@@ -1,6 +1,50 @@
-version: 1
-entities:
-  - InvestmentThesis
-  - ThesisLifecycleState
-  - EvidencePacket
-  - OrderProposal
+{
+  "version": 2,
+  "operating_scope": {
+    "human_users": 1,
+    "human_actor_id": "OWNER",
+    "account_model": "ONE_FIXED_ACCOUNT_PER_ENVIRONMENT"
+  },
+  "entities": {
+    "issuer": {
+      "id_type": "IssuerId",
+      "identity_source": "corp_master"
+    },
+    "security": {
+      "id_type": "SecurityId",
+      "identity_source": "security_master",
+      "belongs_to": "issuer"
+    },
+    "account": {
+      "id_type": "AccountRef",
+      "identity_source": "fixed_environment_binding",
+      "mode": "ONE_FIXED_ACCOUNT_PER_ENVIRONMENT",
+      "bindings": {
+        "PAPER": "PAPER_PRIMARY",
+        "LIVE": "LIVE_PRIMARY"
+      }
+    },
+    "position": {
+      "identity": [
+        "account_ref",
+        "security_id"
+      ],
+      "economic_authority": "broker_account"
+    },
+    "investment_thesis": {
+      "id_type": "ThesisId",
+      "created_by": "deterministic_boundary",
+      "draft_is_not_entity": true
+    },
+    "order": {
+      "id_type": "OrderId",
+      "broker_identity": "broker_order_id",
+      "state_owner": "ledger.order_store"
+    },
+    "approval": {
+      "id_type": "ApprovalId",
+      "immutable_target_hash_required": true,
+      "human_actor": "OWNER"
+    }
+  }
+}

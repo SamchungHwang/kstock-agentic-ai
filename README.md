@@ -1,6 +1,6 @@
-# K-Stock Console V1 실습 코드 v6
+# K-Stock Agentic AI 실습 코드 — 단일사용자·환경별 고정계좌
 
-3장의 여섯 실습 산출물을 실행 가능한 Tkinter 코드로 구현한 **DEMO/PAPER용 골격**이다.
+현재 1~6장 실습 산출물을 누적한 **개인투자자용 DEMO 골격**이다. PAPER와 LIVE는 서로 다른 고정계좌·상태 저장소를 사용한다.
 
 - 안전 기동 콘솔
 - 조회 패널
@@ -12,6 +12,33 @@
 실제 KIS/OpenDART 자격증명과 네트워크 호출은 포함하지 않는다. 대신
 `external_adapter.py`가 외부 경계 호출을 계측하여 빠른 점검·로컬 자동 갱신이
 외부 호출을 유발하지 않는지 자동시험으로 검증한다.
+
+## 운영 전제 — 단일 사용자, 환경별 고정계좌
+
+이 코드의 사람 사용자는 `OWNER` 한 명뿐이다. 계좌를 선택하거나 여러 계좌를 동시에 운용하지 않는다.
+
+- `PAPER` 실행세계 → `PAPER_PRIMARY` 고정계좌 1개
+- `LIVE` 실행세계 → `LIVE_PRIMARY` 고정계좌 1개
+- 한 GUI/CLI 프로세스는 PAPER 또는 LIVE 하나만 사용한다.
+- 실행 중 계좌 전환 기능은 없다. 환경을 바꾸려면 새 프로세스를 시작한다.
+- 실제 KIS 계좌번호는 `.env`의 환경별 자격증명에만 있고, 도메인 계약에는 논리 식별자 `PAPER_PRIMARY`/`LIVE_PRIMARY`를 사용한다.
+- PAPER와 LIVE의 상태·감사·저장본은 각각 `data/paper/`, `data/live/` 아래에 분리된다.
+- 내부 worker와 `SYSTEM_GUARDIAN`은 사람 사용자가 아니라 서비스 actor다.
+
+Windows 실행 예:
+
+```bat
+run_console_paper.bat
+run_console_live.bat
+```
+
+또는:
+
+```bat
+run_console.bat --environment PAPER
+run_console.bat --environment LIVE
+```
+
 
 ## v3의 주요 보완
 
@@ -30,16 +57,16 @@
 
 ## 실행
 
-Windows:
+Windows(PAPER 기본):
 
 ```bat
-run_console.bat
+run_console.bat --environment PAPER
 ```
 
-또는:
+LIVE는 별도 새 프로세스로 시작한다.
 
-```bash
-python run_console.py
+```bat
+run_console.bat --environment LIVE
 ```
 
 ## 권장 실습 순서
@@ -66,7 +93,7 @@ python run_console.py
 python -m pytest -q
 ```
 
-현재 기준: **33건 통과**. 이 중 `tests/test_scenarios.py`의 20건이
+현재 기준: **133건 통과**. 이 중 `tests/test_scenarios.py`의 20건이
 `TEST_SCENARIOS.md`와 번호별로 대응한다.
 
 ## 핵심 파일
@@ -89,7 +116,7 @@ CLI와 GUI 사이 JSONL은 ASCII-safe JSON으로 전달되므로 한글이 깨�
 ## 화면 로그 지우기
 
 실행 로그 오른쪽 위의 **화면 로그 지우기** 또는 `Ctrl+L`을 사용한다.
-화면만 비우며 `data/audit.jsonl`과 correlation 추적 기록은 유지한다.
+화면만 비우며 `data/paper/audit.jsonl` 또는 `data/live/audit.jsonl`과 correlation 추적 기록은 유지한다.
 
 ## v4: 동명 `kstock` 패키지 충돌 방지
 

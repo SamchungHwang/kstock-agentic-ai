@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+from .fixed_identity import fixed_account_ref, normalize_environment
+
 
 ENV_PAPER: Final[str] = "PAPER"
 ENV_LIVE: Final[str] = "LIVE"
@@ -65,6 +67,10 @@ class KisCredentials:
     source_file: str | None
 
     @property
+    def account_ref(self) -> str:
+        return fixed_account_ref(self.environment).value
+
+    @property
     def account_display(self) -> str:
         if not self.account_number:
             return ""
@@ -94,6 +100,7 @@ class KisCredentials:
         """비밀값을 노출하지 않는 진단용 요약."""
         return {
             "environment": self.environment,
+            "account_ref": self.account_ref,
             "app_key_configured": bool(self.app_key),
             "app_secret_configured": bool(self.app_secret),
             "account": mask_account(self.account_display),
@@ -102,10 +109,6 @@ class KisCredentials:
             "source_file": self.source_file,
             "errors": self.validation_errors(),
         }
-
-
-def _normalize_environment(value: str) -> str:
-    return value.strip().upper()
 
 
 def _parse_account(account_raw: str, product_raw: str) -> tuple[str, str]:
@@ -135,7 +138,7 @@ def resolve_kis_credentials(
     if load_dotenv:
         source = load_dotenv_file(dotenv_path, override=False)
 
-    env = _normalize_environment(environment)
+    env = normalize_environment(environment)
     if env == ENV_LIVE:
         prefix = "KIS_LIVE"
     else:

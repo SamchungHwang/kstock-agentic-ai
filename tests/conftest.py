@@ -15,6 +15,9 @@ def configured_paper_environment(monkeypatch):
     monkeypatch.setenv("KIS_PAPER_ACCOUNT", "50012345-01")
     monkeypatch.setenv("KIS_PAPER_ACCOUNT_PRODUCT", "01")
     monkeypatch.delenv("KIS_ALLOW_LIVE", raising=False)
+    # 모든 in-process 테스트는 기본적으로 PAPER 고정 실행세계에서 시작한다.
+    from kstock.state_store import configure_runtime_environment
+    configure_runtime_environment("PAPER")
 
 
 @pytest.fixture

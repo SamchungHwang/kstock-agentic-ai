@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import tkinter as tk
 from datetime import datetime
@@ -9,8 +10,9 @@ from uuid import uuid4
 from .console_commands import COMMANDS, CommandSpec
 from .console_runner import CommandRunner, RunCallbacks
 from .demo_services import start_console_session
+from .fixed_identity import OWNER_ACTOR_ID, fixed_account_ref, normalize_environment
 from .models import CommandContext
-from .state_store import read_state
+from .state_store import configure_runtime_environment, read_state
 
 
 STATUS_MARK = {
@@ -120,9 +122,11 @@ class TypedConfirmationDialog(tk.Toplevel):
 class ConsoleV1App(tk.Tk):
     LOCAL_REFRESH_MS = 1000
 
-    def __init__(self) -> None:
+    def __init__(self, environment: str) -> None:
         super().__init__()
-        self.title("K-Stock AI Agent — Console V1 (DEMO/PAPER)")
+        self.environment = normalize_environment(environment)
+        self.account_ref = fixed_account_ref(self.environment).value
+        self.title(f"K-Stock AI Agent — Console V1 [{self.environment}] {self.account_ref}")
         self.geometry("1280x860")
         self.minsize(1080, 720)
         self.runner = CommandRunner(self)
@@ -148,7 +152,7 @@ class ConsoleV1App(tk.Tk):
             status.columnconfigure(i, weight=1)
         ttk.Label(
             status,
-            text="환경 PAPER",
+            text=f"{self.environment} · {self.account_ref}",
             font=("맑은 고딕", 10, "bold"),
         ).grid(row=0, column=0, sticky="w")
         ttk.Label(status, text="게이트").grid(row=0, column=1, sticky="e")
@@ -538,7 +542,7 @@ class ConsoleV1App(tk.Tk):
             ask_reason = command_key == "resume"
             summary = (
                 f"{spec.label} 명령을 실행합니다.\n"
-                f"환경: PAPER\n필요 확인 문구: {phrase}"
+                f"환경: {self.environment}\n계좌: {self.account_ref}\n사용자: {OWNER_ACTOR_ID}\n필요 확인 문구: {phrase}"
             )
             dialog = TypedConfirmationDialog(
                 self,
@@ -553,7 +557,7 @@ class ConsoleV1App(tk.Tk):
 
         corr = new_correlation_id()
         ctx = CommandContext(
-            environment="PAPER",
+            environment=self.environment,
             correlation_id=corr,
             values=values,
         )
@@ -661,9 +665,14 @@ class ConsoleV1App(tk.Tk):
         self.after(self.LOCAL_REFRESH_MS, self.refresh_local_state)
 
 
-def main() -> int:
-    # GUI가 열리기 전에 새 세션을 만들고 이전 OPEN 상태를 폐기한다.
-    start_console_session(new_correlation_id())
-    app = ConsoleV1App()
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="K-Stock Console V1")
+    parser.add_argument("--environment", choices=["PAPER", "LIVE"], default="PAPER")
+    args = parser.parse_args(argv)
+    environment = configure_runtime_environment(args.environment)
+
+    # GUI가 열리기 전에 해당 환경의 고정계좌 세션을 만들고 이전 OPEN 상태를 폐기한다.
+    start_console_session(new_correlation_id(), environment)
+    app = ConsoleV1App(environment)
     app.mainloop()
     return 0

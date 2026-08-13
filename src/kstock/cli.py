@@ -33,13 +33,14 @@ from .demo_services import (
     start_console_session,
 )
 from .models import ResultStatus
+from .state_store import configure_runtime_environment
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="K-Stock Console V1 demo CLI")
     parser.add_argument("group")
     parser.add_argument("action")
-    parser.add_argument("--environment", default="PAPER")
+    parser.add_argument("--environment", type=str.upper, choices=["PAPER", "LIVE"], required=True)
     parser.add_argument("--correlation-id", required=True)
     parser.add_argument("--output", default="jsonl", choices=["jsonl"])
     parser.add_argument("--confirmation", default="")
@@ -58,11 +59,11 @@ def dispatch(args):
     corr = args.correlation_id
 
     if key == ("startup", "session-init"):
-        return start_console_session(corr)
+        return start_console_session(corr, args.environment)
     if key == ("startup", "quick-check"):
-        return quick_check(corr)
+        return quick_check(corr, args.environment)
     if key == ("startup", "full-check"):
-        return full_check(corr)
+        return full_check(corr, args.environment)
     if key == ("gate", "status"):
         return gate_status(corr)
     if key == ("gate", "open"):
@@ -71,11 +72,11 @@ def dispatch(args):
         return close_gate(corr, args.reason)
 
     if key == ("account", "query"):
-        return account_query(corr)
+        return account_query(corr, args.environment)
     if key == ("quote", "query"):
         return quote_query(corr, args.symbol)
     if key == ("account", "buying-power"):
-        return buying_power_query(corr, args.symbol, args.price)
+        return buying_power_query(corr, args.symbol, args.price, args.environment)
     if key == ("dart", "collect"):
         return dart_collect(corr)
     if key == ("dart", "replay"):
@@ -122,6 +123,7 @@ def dispatch(args):
 def main(argv: list[str] | None = None) -> int:
     force_utf8_stdio()
     args = build_parser().parse_args(argv)
+    configure_runtime_environment(args.environment)
     emitter = JsonlEmitter(args.correlation_id)
     emitter.progress("dispatch", f"{args.group} {args.action} 실행 중")
     try:

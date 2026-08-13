@@ -248,6 +248,7 @@ def test_14_expired_intent_blocked():
 def test_15_paper_intent_cannot_submit_to_live():
     _, _, p, d = approved_proposal()
     intent = issue_intent(version=ConsoleVersion.V3_PAPER, proposal=p, approval=d, environment="PAPER", now=NOW)
+    assert intent.account_ref == "PAPER_PRIMARY"
     result = submit_approved_intent(
         version=ConsoleVersion.V3_PAPER,
         intent=intent,

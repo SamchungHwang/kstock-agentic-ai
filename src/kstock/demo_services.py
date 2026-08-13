@@ -16,9 +16,17 @@ from .audit_store import (
     trace,
 )
 from .env_config import resolve_kis_credentials
+from .fixed_identity import OWNER_ACTOR_ID, fixed_account_ref
 from .external_adapter import probe_full_check_boundaries, record_external_call
 from .models import ResultStatus
-from .state_store import data_dir, now_iso, read_state, update_state
+from .state_store import (
+    configure_runtime_environment,
+    require_runtime_environment,
+    data_dir,
+    now_iso,
+    read_state,
+    update_state,
+)
 
 
 class ServiceResult:
@@ -111,10 +119,14 @@ def start_console_session(corr: str, environment: str = "PAPER") -> ServiceResul
 
     HALTED는 사고 상태이므로 그대로 유지하고, OPEN만 CLOSED로 내린다.
     """
+    environment = configure_runtime_environment(environment)
+    account_ref = fixed_account_ref(environment).value
     session_id = "session_" + uuid4().hex[:12]
 
     def mutate(state):
-        state["environment"] = environment.upper()
+        state["environment"] = environment
+        state["account_ref"] = account_ref
+        state["owner_actor_id"] = OWNER_ACTOR_ID
         state["session"] = {
             "session_id": session_id,
             "started_at": now_iso(),
@@ -132,7 +144,7 @@ def start_console_session(corr: str, environment: str = "PAPER") -> ServiceResul
         ResultStatus.SUCCESS,
         "CONSOLE_SESSION_STARTED",
         "Console 세션을 시작했습니다. 거래 게이트는 자동으로 열리지 않습니다.",
-        {"session": state["session"], "gate": state["gate"], "environment": state["environment"]},
+        {"session": state["session"], "gate": state["gate"], "environment": state["environment"], "account_ref": state["account_ref"], "owner_actor_id": OWNER_ACTOR_ID},
     )
     _audit(corr, "CONSOLE_SESSION_STARTED", result, actor="startup")
     return result
@@ -140,6 +152,7 @@ def start_console_session(corr: str, environment: str = "PAPER") -> ServiceResul
 
 def quick_check(corr: str, environment: str = "PAPER") -> ServiceResult:
     """로컬 상태만 점검한다. 외부 경계 어댑터를 호출하지 않는다."""
+    environment = require_runtime_environment(environment)
     try:
         state = read_state()
         audit_status, audit_message = health(check_write=True)
@@ -192,6 +205,7 @@ def quick_check(corr: str, environment: str = "PAPER") -> ServiceResult:
 
 def full_check(corr: str, environment: str = "PAPER") -> ServiceResult:
     """명시적 실행에서만 외부 경계 어댑터를 호출하는 전체 점검."""
+    environment = require_runtime_environment(environment)
     probes = probe_full_check_boundaries(environment)
     state = read_state()
     audit_status, audit_message = health(check_write=True)
@@ -298,7 +312,7 @@ def open_gate(corr: str, confirmation: str) -> ServiceResult:
                 event="GATE_OPEN_PREPARE",
                 status="SUCCESS",
                 correlation_id=corr,
-                actor="owner",
+                actor=OWNER_ACTOR_ID,
                 message="거래 게이트 열기 전제조건을 확인했습니다.",
                 payload={"confirmation": "START TRADING"},
             )
@@ -307,14 +321,14 @@ def open_gate(corr: str, confirmation: str) -> ServiceResult:
                 s["gate"].update({
                     "state": "OPEN",
                     "changed_at": now_iso(),
-                    "changed_by": "owner",
+                    "changed_by": OWNER_ACTOR_ID,
                     "reason": "START TRADING 확인",
                 })
 
             state = update_state(mutate)
             result = ServiceResult(ResultStatus.SUCCESS, "GATE_OPENED", "거래 게이트를 열었습니다.", state["gate"])
             try:
-                _audit(corr, "GATE_OPEN", result, actor="owner", required=True)
+                _audit(corr, "GATE_OPEN", result, actor=OWNER_ACTOR_ID, required=True)
             except OSError as exc:
                 update_state(lambda s: s["gate"].update({
                     "state": "CLOSED",
@@ -327,7 +341,7 @@ def open_gate(corr: str, confirmation: str) -> ServiceResult:
             result = ServiceResult(ResultStatus.BLOCKED, "AUDIT_UNHEALTHY", str(exc))
 
     if result.code not in {"GATE_OPENED", "AUDIT_COMMIT_FAILED"}:
-        _audit(corr, "GATE_OPEN", result, actor="owner")
+        _audit(corr, "GATE_OPEN", result, actor=OWNER_ACTOR_ID)
     return result
 
 
@@ -336,18 +350,19 @@ def close_gate(corr: str, reason: str = "사용자 요청") -> ServiceResult:
         s["gate"].update({
             "state": "CLOSED",
             "changed_at": now_iso(),
-            "changed_by": "owner",
+            "changed_by": OWNER_ACTOR_ID,
             "reason": reason.strip() or "사용자 요청",
         })
 
     state = update_state(mutate)
     result = ServiceResult(ResultStatus.SUCCESS, "GATE_CLOSED", "거래 게이트를 닫았습니다.", state["gate"])
-    persisted = _audit(corr, "GATE_CLOSE", result, actor="owner")
+    persisted = _audit(corr, "GATE_CLOSE", result, actor=OWNER_ACTOR_ID)
     result.payload = {**result.payload, "audit_persisted": persisted}
     return result
 
 
 def account_query(corr: str, environment: str = "PAPER") -> ServiceResult:
+    environment = require_runtime_environment(environment)
     credentials = resolve_kis_credentials(environment)
     if credentials.validation_errors():
         result = ServiceResult(
@@ -366,7 +381,8 @@ def account_query(corr: str, environment: str = "PAPER") -> ServiceResult:
     display_price = int(quote.get("display_price", 82_400))
     risk_price = int(quote.get("risk_price", display_price))
     snapshot = {
-        "account_ref": credentials.account_display,
+        "account_ref": credentials.account_ref,
+        "broker_account": credentials.safe_summary()["account"],
         "environment": credentials.environment,
         "cash_krw": 9_920_000,
         "buying_power_krw": 9_870_000,
@@ -396,7 +412,7 @@ def inject_quote_mode(corr: str, mode: str) -> ServiceResult:
     else:
         update_state(lambda s: s["demo"].update({"quote_mode": mode}))
         result = ServiceResult(ResultStatus.SUCCESS, "QUOTE_MODE_SET", f"시세 모드를 {mode}로 설정했습니다.", {"mode": mode})
-    _audit(corr, "DEMO_QUOTE_MODE", result, actor="owner")
+    _audit(corr, "DEMO_QUOTE_MODE", result, actor=OWNER_ACTOR_ID)
     return result
 
 
@@ -440,6 +456,7 @@ def quote_query(corr: str, symbol: str) -> ServiceResult:
 
 
 def buying_power_query(corr: str, symbol: str, price: int, environment: str = "PAPER") -> ServiceResult:
+    environment = require_runtime_environment(environment)
     credentials = resolve_kis_credentials(environment)
     if credentials.validation_errors():
         result = ServiceResult(
@@ -456,7 +473,8 @@ def buying_power_query(corr: str, symbol: str, price: int, environment: str = "P
         snapshot = {
             "symbol": symbol,
             "price": price,
-            "account_ref": credentials.account_display,
+            "account_ref": credentials.account_ref,
+            "broker_account": credentials.safe_summary()["account"],
             "environment": credentials.environment,
             "buying_power_krw": 9_870_000,
             "max_quantity": 9_870_000 // price,
@@ -560,7 +578,7 @@ def inject_reconciliation_mode(corr: str, mode: str) -> ServiceResult:
     else:
         update_state(lambda s: s["demo"].update({"reconciliation_mode": mode}))
         result = ServiceResult(ResultStatus.SUCCESS, "RECONCILIATION_MODE_SET", f"다음 대사 모드를 {mode}로 설정했습니다.", {"mode": mode})
-    _audit(corr, "DEMO_RECONCILIATION_MODE", result, actor="owner")
+    _audit(corr, "DEMO_RECONCILIATION_MODE", result, actor=OWNER_ACTOR_ID)
     return result
 
 
@@ -684,7 +702,7 @@ def repair_demo(corr: str, confirmation: str) -> ServiceResult:
 
         update_state(mutate)
         result = ServiceResult(ResultStatus.SUCCESS, "DEMO_REPAIR_OK", "데모 원장 복구를 적용했습니다. 대사를 다시 실행하십시오.")
-    _audit(corr, "DEMO_REPAIR", result, actor="owner")
+    _audit(corr, "DEMO_REPAIR", result, actor=OWNER_ACTOR_ID)
     return result
 
 
@@ -703,7 +721,7 @@ def seed_open_order(corr: str) -> ServiceResult:
 
     update_state(mutate)
     result = ServiceResult(ResultStatus.SUCCESS, "DEMO_OPEN_ORDER_SEEDED", "미체결 데모 주문을 추가했습니다.", {"order_id": order_id})
-    _audit(corr, "DEMO_ORDER_SEEDED", result, actor="owner")
+    _audit(corr, "DEMO_ORDER_SEEDED", result, actor=OWNER_ACTOR_ID)
     return result
 
 
@@ -722,7 +740,7 @@ def seed_unknown_order(corr: str) -> ServiceResult:
 
     update_state(mutate)
     result = ServiceResult(ResultStatus.SUCCESS, "DEMO_UNKNOWN_ORDER_SEEDED", "UNKNOWN 데모 주문을 추가했습니다.", {"order_id": order_id})
-    _audit(corr, "DEMO_UNKNOWN_ORDER_SEEDED", result, actor="owner")
+    _audit(corr, "DEMO_UNKNOWN_ORDER_SEEDED", result, actor=OWNER_ACTOR_ID)
     return result
 
 
@@ -747,7 +765,7 @@ def cancel_open_orders(corr: str, confirmation: str) -> ServiceResult:
             f"미체결 주문 {len(target_ids)}건을 취소했습니다.",
             {"canceled_order_ids": target_ids, "external_boundary": boundary, "gate": state["gate"]},
         )
-    _audit(corr, "OPEN_ORDERS_CANCEL", result, actor="owner")
+    _audit(corr, "OPEN_ORDERS_CANCEL", result, actor=OWNER_ACTOR_ID)
     return result
 
 
@@ -786,20 +804,20 @@ def halt_trading(corr: str, reason: str) -> ServiceResult:
         s["kill_switch"].update({
             "state": "ON",
             "changed_at": now_iso(),
-            "changed_by": "owner",
+            "changed_by": OWNER_ACTOR_ID,
             "reason": reason,
         })
         s["gate"].update({
             "state": "HALTED",
             "changed_at": now_iso(),
-            "changed_by": "owner",
+            "changed_by": OWNER_ACTOR_ID,
             "reason": reason,
         })
         s["active_halt"] = {
             "cause": "MANUAL_EMERGENCY",
             "reason": reason,
             "triggered_at": now_iso(),
-            "triggered_by": "owner",
+            "triggered_by": OWNER_ACTOR_ID,
             "resolved": False,
         }
         s["last_full_check"]["status"] = "UNKNOWN"
@@ -810,16 +828,16 @@ def halt_trading(corr: str, reason: str) -> ServiceResult:
         "cause": "MANUAL_EMERGENCY",
         "reason": reason,
         "triggered_at": state["kill_switch"]["changed_at"],
-        "triggered_by": "owner",
+        "triggered_by": OWNER_ACTOR_ID,
         "kill_switch": state["kill_switch"],
         "gate": state["gate"],
     })
-    persisted = _audit(corr, "KILL_SWITCH_CHANGED", result, actor="owner")
+    persisted = _audit(corr, "KILL_SWITCH_CHANGED", result, actor=OWNER_ACTOR_ID)
     _audit(
         corr,
         "GATE_CHANGED",
         ServiceResult(ResultStatus.BLOCKED, "GATE_HALTED", "수동 비상 정지로 게이트가 HALTED가 됐습니다.", state["gate"]),
-        actor="owner",
+        actor=OWNER_ACTOR_ID,
     )
     result.payload["audit_persisted"] = persisted
     return result
@@ -852,7 +870,7 @@ def resume_trading(corr: str, confirmation: str, reason: str) -> ServiceResult:
                 event="TRADING_RESUME_PREPARE",
                 status="SUCCESS",
                 correlation_id=corr,
-                actor="owner",
+                actor=OWNER_ACTOR_ID,
                 message="재가동 전 권위 상태를 다시 확인했습니다.",
                 payload={
                     "reconciliation": state["last_reconciliation"],
@@ -864,13 +882,13 @@ def resume_trading(corr: str, confirmation: str, reason: str) -> ServiceResult:
                 s["kill_switch"].update({
                     "state": "OFF",
                     "changed_at": now_iso(),
-                    "changed_by": "owner",
+                    "changed_by": OWNER_ACTOR_ID,
                     "reason": reason.strip(),
                 })
                 s["gate"].update({
                     "state": "OPEN",
                     "changed_at": now_iso(),
-                    "changed_by": "owner",
+                    "changed_by": OWNER_ACTOR_ID,
                     "reason": "RESUME TRADING 확인: " + reason.strip(),
                 })
                 if s.get("active_halt"):
@@ -884,7 +902,7 @@ def resume_trading(corr: str, confirmation: str, reason: str) -> ServiceResult:
                 "gate": state["gate"],
             })
             try:
-                _audit(corr, "TRADING_RESUME", result, actor="owner", required=True)
+                _audit(corr, "TRADING_RESUME", result, actor=OWNER_ACTOR_ID, required=True)
             except OSError as exc:
                 def rollback(s):
                     s["kill_switch"].update({
@@ -905,7 +923,7 @@ def resume_trading(corr: str, confirmation: str, reason: str) -> ServiceResult:
             result = ServiceResult(ResultStatus.BLOCKED, "AUDIT_UNHEALTHY", str(exc))
 
     if result.code not in {"TRADING_RESUMED", "AUDIT_COMMIT_FAILED"}:
-        _audit(corr, "TRADING_RESUME", result, actor="owner")
+        _audit(corr, "TRADING_RESUME", result, actor=OWNER_ACTOR_ID)
     return result
 
 

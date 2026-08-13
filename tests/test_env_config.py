@@ -57,3 +57,21 @@ def test_doctor_never_exposes_secret_values(monkeypatch):
     assert "very-sensitive-secret" not in text
     assert result["credentials"]["app_key_configured"] is True
     assert result["credentials"]["app_secret_configured"] is True
+
+
+def test_paper_and_live_use_distinct_fixed_logical_accounts(monkeypatch):
+    monkeypatch.setenv("KIS_PAPER_APP_KEY", "paper-key")
+    monkeypatch.setenv("KIS_PAPER_APP_SECRET", "paper-secret")
+    monkeypatch.setenv("KIS_PAPER_ACCOUNT", "50012345-01")
+    monkeypatch.setenv("KIS_LIVE_APP_KEY", "live-key")
+    monkeypatch.setenv("KIS_LIVE_APP_SECRET", "live-secret")
+    monkeypatch.setenv("KIS_LIVE_ACCOUNT", "12345678-01")
+    monkeypatch.setenv("KIS_ALLOW_LIVE", "1")
+
+    paper = resolve_kis_credentials("PAPER", load_dotenv=False)
+    live = resolve_kis_credentials("LIVE", load_dotenv=False)
+
+    assert paper.account_ref == "PAPER_PRIMARY"
+    assert live.account_ref == "LIVE_PRIMARY"
+    assert paper.account_ref != live.account_ref
+    assert paper.account_display != live.account_display

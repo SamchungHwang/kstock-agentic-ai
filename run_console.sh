@@ -5,4 +5,4 @@ export PYTHONPATH="$PWD/src${PYTHONPATH:+:$PYTHONPATH}"
 export PYTHONUTF8=1
 export PYTHONIOENCODING=utf-8
 export PYTHONUNBUFFERED=1
-python run_console.py
+python run_console.py "$@"

@@ -14,9 +14,12 @@ class ActorType(str, Enum):
 
 
 class ActorRole(str, Enum):
-    APPROVER = "APPROVER"
-    SUBMITTER = "SUBMITTER"
+    # 사람 사용자는 OWNER 한 명뿐이다.
+    OWNER = "OWNER"
+    # 내부 작업 프로세스. 사람 사용자가 아니다.
     SERVICE = "SERVICE"
+    # 자동 강화/정지 전용 서비스 역할. 완화·승격 권한은 갖지 않는다.
+    SYSTEM_GUARDIAN = "SYSTEM_GUARDIAN"
 
 
 class ThesisStatus(str, Enum):

@@ -5,6 +5,7 @@ from typing import Protocol
 
 from kstock.domain.actors import Actor
 from kstock.domain.enums import ActorRole, ActorType, GuardCode, GuardStatus
+from kstock.fixed_identity import OWNER_ACTOR_ID
 from kstock.guard.authorization import AuthorizationPolicy
 
 
@@ -31,6 +32,14 @@ def _blocked(code: GuardCode) -> GuardDecision:
     return GuardDecision(status=GuardStatus.BLOCKED, code=code)
 
 
+def _is_owner(actor: Actor) -> bool:
+    return (
+        actor.actor_type is ActorType.HUMAN
+        and actor.actor_id == OWNER_ACTOR_ID
+        and ActorRole.OWNER in actor.roles
+    )
+
+
 def evaluate_guard(
     guard_input: GuardInput,
     *,
@@ -49,7 +58,11 @@ def evaluate_guard(
     if not actor.authenticated:
         return _blocked(GuardCode.ACTOR_UNAUTHENTICATED)
 
-    if guard_input.command in authorization_policy.human_only_commands and actor.actor_type is not ActorType.HUMAN:
+    # 사람 actor는 OWNER 한 명만 허용한다. APPROVER/SUBMITTER 같은 별도 사람 역할은 두지 않는다.
+    if actor.actor_type is ActorType.HUMAN and not _is_owner(actor):
+        return _blocked(GuardCode.ACTOR_ROLE_FORBIDDEN)
+
+    if guard_input.command in authorization_policy.human_only_commands and not _is_owner(actor):
         return _blocked(GuardCode.ACTOR_ROLE_FORBIDDEN)
 
     required_roles = authorization_policy.command_roles.get(guard_input.command, frozenset())
@@ -57,12 +70,13 @@ def evaluate_guard(
         return _blocked(GuardCode.ACTOR_ROLE_FORBIDDEN)
 
     approver = guard_input.approved_by
+    if guard_input.command in authorization_policy.owner_approval_commands and approver is None:
+        return _blocked(GuardCode.APPROVAL_REQUIRED)
+
     if approver is not None:
         if not approver.authenticated:
             return _blocked(GuardCode.ACTOR_UNAUTHENTICATED)
-        if ActorRole.APPROVER not in approver.roles:
-            return _blocked(GuardCode.ACTOR_ROLE_FORBIDDEN)
-        if approver.actor_id != actor.actor_id and not authorization_policy.allow_separate_approver_and_submitter:
+        if not _is_owner(approver):
             return _blocked(GuardCode.ACTOR_ROLE_FORBIDDEN)
 
     return GuardDecision(status=GuardStatus.PASS, code=GuardCode.PASS)

@@ -7,6 +7,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from .fixed_identity import assert_fixed_account_binding, fixed_account_ref
+
 
 class ExecutionWorldError(ValueError):
     pass
@@ -108,6 +110,9 @@ class Account:
     account_ref: str
     environment: Environment
 
+    def __post_init__(self) -> None:
+        assert_fixed_account_binding(self.environment.value, self.account_ref)
+
 
 @dataclass(frozen=True)
 class Position:
@@ -134,6 +139,9 @@ class Order:
     environment: Environment
     state: OrderState = OrderState.CREATED
     broker_order_id: str | None = None
+
+    def __post_init__(self) -> None:
+        assert_fixed_account_binding(self.environment.value, self.account_ref)
 
 
 @dataclass(frozen=True)
@@ -172,6 +180,9 @@ class StateCoordinate:
     actor: Actor
     source: str
     policy_version: str
+
+    def __post_init__(self) -> None:
+        assert_fixed_account_binding(self.environment.value, self.account_ref)
 
 
 @dataclass(frozen=True)
@@ -513,6 +524,20 @@ def validate_execution_world_contract(config: Mapping[str, Any]) -> None:
         missing = sorted(required_constraints - actual_constraints)
         raise ContractValidationError(f"missing constraints: {missing}")
 
+    scope = config.get("operating_scope", {})
+    if scope.get("human_users") != 1 or scope.get("human_actor_id") != "OWNER":
+        raise ContractValidationError("operating scope must have exactly one human OWNER")
+    if scope.get("runtime_account_switch") != "DENY":
+        raise ContractValidationError("runtime account switching must be denied")
+
+    fixed_accounts = config.get("fixed_accounts", {})
+    expected_accounts = {
+        "PAPER": fixed_account_ref("PAPER").value,
+        "LIVE": fixed_account_ref("LIVE").value,
+    }
+    if fixed_accounts != expected_accounts:
+        raise ContractValidationError("fixed PAPER/LIVE account binding changed")
+
     if set(config.get("record_types", [])) != {"OBSERVATION", "JUDGMENT", "PROPOSAL", "EVENT"}:
         raise ContractValidationError("record types must remain separate")
     if set(config.get("commit_types", [])) != {"CONTROL_COMMIT", "ECONOMIC_COMMIT"}:
@@ -534,6 +559,11 @@ def validate_core_entities_contract(config: Mapping[str, Any]) -> None:
         raise ContractValidationError("core entity set changed")
     if entities["security"].get("belongs_to") != "issuer":
         raise ContractValidationError("Security must belong to Issuer")
+    account = entities["account"]
+    if account.get("identity_source") != "fixed_environment_binding":
+        raise ContractValidationError("Account identity must come from fixed environment binding")
+    if account.get("mode") != "ONE_FIXED_ACCOUNT_PER_ENVIRONMENT":
+        raise ContractValidationError("multi-account mode is out of scope")
     if entities["position"].get("economic_authority") != "broker_account":
         raise ContractValidationError("Position economic authority must be broker account")
     if not entities["investment_thesis"].get("draft_is_not_entity"):

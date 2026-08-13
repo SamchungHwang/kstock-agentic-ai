@@ -1,4 +1,116 @@
-version: 1
-environments:
-  - PAPER
-  - LIVE
+{
+  "version": 2,
+  "operating_scope": {
+    "human_users": 1,
+    "human_actor_id": "OWNER",
+    "runtime_account_switch": "DENY",
+    "runtime_environment_switch": "RESTART_REQUIRED"
+  },
+  "fixed_accounts": {
+    "PAPER": "PAPER_PRIMARY",
+    "LIVE": "LIVE_PRIMARY"
+  },
+  "states": {
+    "trading_gate": [
+      "CLOSED",
+      "OPEN",
+      "HALTED",
+      "UNKNOWN"
+    ],
+    "kill_switch": [
+      "OFF",
+      "ON"
+    ],
+    "reconciliation": [
+      "MATCH",
+      "MISMATCH",
+      "UNKNOWN"
+    ],
+    "order": [
+      "CREATED",
+      "SUBMITTING",
+      "SUBMITTED",
+      "PARTIALLY_FILLED",
+      "FILLED",
+      "CANCELED",
+      "REJECTED",
+      "UNKNOWN"
+    ]
+  },
+  "transitions": {
+    "order": {
+      "CREATED": {
+        "SUBMIT_REQUESTED": "SUBMITTING"
+      },
+      "SUBMITTING": {
+        "BROKER_ACCEPTED": "SUBMITTED",
+        "BROKER_REJECTED": "REJECTED",
+        "TIMEOUT": "UNKNOWN"
+      },
+      "SUBMITTED": {
+        "PARTIAL_FILL": "PARTIALLY_FILLED",
+        "FULL_FILL": "FILLED",
+        "CANCEL_ACCEPTED": "CANCELED"
+      },
+      "PARTIALLY_FILLED": {
+        "FULL_FILL": "FILLED",
+        "CANCEL_ACCEPTED": "CANCELED"
+      },
+      "UNKNOWN": {
+        "BROKER_FOUND_SUBMITTED": "SUBMITTED",
+        "BROKER_FOUND_PARTIAL": "PARTIALLY_FILLED",
+        "BROKER_FOUND_FILLED": "FILLED",
+        "BROKER_FOUND_CANCELED": "CANCELED",
+        "BROKER_FOUND_REJECTED": "REJECTED"
+      }
+    }
+  },
+  "constraints": [
+    {
+      "id": "NO_DRAFT_TO_SIZING"
+    },
+    {
+      "id": "NO_UNAPPROVED_INTENT"
+    },
+    {
+      "id": "NO_NEW_RISK_WHEN_GATE_NOT_OPEN"
+    },
+    {
+      "id": "NO_NEW_RISK_WHEN_KILL_SWITCH_ON"
+    },
+    {
+      "id": "NO_NEW_RISK_WHEN_RECONCILIATION_NOT_MATCH"
+    },
+    {
+      "id": "NO_NEW_RISK_WHEN_AUDIT_UNHEALTHY"
+    },
+    {
+      "id": "NO_AUTO_RESUBMIT_WHEN_ORDER_UNKNOWN"
+    },
+    {
+      "id": "NO_RAW_SYMBOL_QTY_PRICE_SUBMIT_CLI"
+    },
+    {
+      "id": "NO_IMPLICIT_PAPER_TO_LIVE_PROMOTION"
+    },
+    {
+      "id": "NO_RUNTIME_ACCOUNT_SWITCH"
+    },
+    {
+      "id": "FIXED_ACCOUNT_MUST_MATCH_ENVIRONMENT"
+    },
+    {
+      "id": "SINGLE_HUMAN_OWNER_ONLY"
+    }
+  ],
+  "record_types": [
+    "OBSERVATION",
+    "JUDGMENT",
+    "PROPOSAL",
+    "EVENT"
+  ],
+  "commit_types": [
+    "CONTROL_COMMIT",
+    "ECONOMIC_COMMIT"
+  ]
+}

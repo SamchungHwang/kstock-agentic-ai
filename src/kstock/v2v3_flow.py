@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
+from .fixed_identity import fixed_account_ref, normalize_environment
 from .v2v3_contracts import (
     BrokerOrderResult,
     CapabilityError,
@@ -219,12 +220,17 @@ def issue_intent(
         raise ContractError("approval does not belong to proposal")
     if approval.proposal_hash != proposal.proposal_hash:
         raise ContractError("proposal hash mismatch")
+    environment = normalize_environment(environment)
+    if environment != "PAPER":
+        raise CapabilityError("V3_PAPER may issue intents only for PAPER")
+    account_ref = fixed_account_ref(environment).value
     issued_at = now or utcnow()
     expires_at = issued_at + timedelta(seconds=ttl_seconds)
     payload = {
         "proposal_id": proposal.proposal_id,
         "proposal_hash": proposal.proposal_hash,
         "environment": environment,
+        "account_ref": account_ref,
         "symbol": proposal.symbol,
         "qty": proposal.qty,
         "limit_price": proposal.limit_price,
@@ -236,6 +242,7 @@ def issue_intent(
         proposal_id=proposal.proposal_id,
         proposal_hash=proposal.proposal_hash,
         environment=environment,
+        account_ref=account_ref,
         symbol=proposal.symbol,
         qty=proposal.qty,
         limit_price=proposal.limit_price,
@@ -273,6 +280,8 @@ def submit_approved_intent(
         return BrokerOrderResult(SubmitStatus.BLOCKED, "V3_PAPER_ONLY", intent.intent_id)
     if intent.environment != environment:
         return BrokerOrderResult(SubmitStatus.BLOCKED, "INTENT_ENVIRONMENT_MISMATCH", intent.intent_id)
+    if intent.account_ref != fixed_account_ref(environment).value:
+        return BrokerOrderResult(SubmitStatus.BLOCKED, "INTENT_ACCOUNT_BINDING_MISMATCH", intent.intent_id)
     if current >= intent.expires_at:
         return BrokerOrderResult(SubmitStatus.BLOCKED, "INTENT_EXPIRED", intent.intent_id)
     if guard_state is not GuardState.PASS:

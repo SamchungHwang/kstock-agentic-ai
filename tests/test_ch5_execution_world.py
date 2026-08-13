@@ -56,7 +56,7 @@ T0 = datetime(2026, 8, 8, 0, 0, tzinfo=UTC)
 
 def snap(qty: int, *, fetched_at: datetime = T0) -> BrokerPositionSnapshot:
     return BrokerPositionSnapshot(
-        account_ref="KIS_CASH_MAIN",
+        account_ref="PAPER_PRIMARY",
         security_id="sec_005930",
         quantity=qty,
         as_of=T0,
@@ -65,10 +65,11 @@ def snap(qty: int, *, fetched_at: datetime = T0) -> BrokerPositionSnapshot:
 
 
 def order(state: OrderState = OrderState.CREATED, env: Environment = Environment.PAPER) -> Order:
+    account_ref = "PAPER_PRIMARY" if env is Environment.PAPER else "LIVE_PRIMARY"
     return Order(
         order_id="ord_1",
         intent_id="intent_1",
-        account_ref="KIS_CASH_MAIN",
+        account_ref=account_ref,
         security_id="sec_005930",
         environment=env,
         state=state,
@@ -170,7 +171,7 @@ def test_12_policy_version_is_part_of_execution_coordinate():
         fetched_at=T0,
         market="KRX",
         environment=Environment.PAPER,
-        account_ref="KIS_CASH_MAIN",
+        account_ref="PAPER_PRIMARY",
         actor=Actor.WORKER,
         source="broker",
     )
@@ -197,7 +198,7 @@ def test_14_observation_type_has_no_judge_conclusion_field():
         fetched_at=T0,
         market="KRX",
         environment=Environment.PAPER,
-        account_ref="KIS_CASH_MAIN",
+        account_ref="PAPER_PRIMARY",
         actor=Actor.BROKER,
         source="quote",
         policy_version="v1",
@@ -213,7 +214,7 @@ def test_14_observation_type_has_no_judge_conclusion_field():
 
 
 def test_15_proposal_does_not_change_position_quantity():
-    position = Position("KIS_CASH_MAIN", "sec_005930", 10, T0, T0)
+    position = Position("PAPER_PRIMARY", "sec_005930", 10, T0, T0)
     before = position
     _ = Proposal("proposal_1", "judgment_1", "sec_005930", "hash1")
     assert position == before

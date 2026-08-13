@@ -7,7 +7,7 @@ from tools.console_commands import (
 )
 
 def context() -> CommandContext:
-    return CommandContext(Environment.PAPER, "corr_test", "paper-main", "test stop")
+    return CommandContext(Environment.PAPER, "corr_test", "test stop")
 
 def test_v1_has_no_economic_command() -> None:
     assert all(s.risk_class is not RiskClass.ECONOMIC for s in build_registry().values())

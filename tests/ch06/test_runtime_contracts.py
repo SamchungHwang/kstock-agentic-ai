@@ -249,12 +249,12 @@ class _StateProvider:
         return self.state
 
 
-def _human(actor_id: str = "human-1", *, authenticated: bool = True, roles=None) -> Actor:
+def _human(actor_id: str = "OWNER", *, authenticated: bool = True, roles=None) -> Actor:
     return Actor(
         actor_id=actor_id,
         actor_type=ActorType.HUMAN,
         authenticated=authenticated,
-        roles=frozenset(roles or {ActorRole.APPROVER, ActorRole.SUBMITTER}),
+        roles=frozenset(roles or {ActorRole.OWNER}),
     )
 
 
@@ -280,12 +280,12 @@ def _guard_input(*, actor: Actor, approved_by: Actor | None = None, command: str
 def _policy() -> AuthorizationPolicy:
     return AuthorizationPolicy(
         command_roles={
-            "SUBMIT_ORDER": frozenset({ActorRole.SUBMITTER}),
-            "APPROVE_ORDER": frozenset({ActorRole.APPROVER}),
-            "EMERGENCY_HALT": frozenset({ActorRole.APPROVER}),
+            "SUBMIT_ORDER": frozenset({ActorRole.OWNER, ActorRole.SERVICE}),
+            "APPROVE_ORDER": frozenset({ActorRole.OWNER}),
+            "EMERGENCY_HALT": frozenset({ActorRole.OWNER}),
         },
-        human_only_commands=frozenset({"EMERGENCY_HALT"}),
-        allow_separate_approver_and_submitter=True,
+        human_only_commands=frozenset({"APPROVE_ORDER", "EMERGENCY_HALT"}),
+        owner_approval_commands=frozenset({"SUBMIT_ORDER"}),
     )
 
 
@@ -336,19 +336,31 @@ def test_14_service_actor_cannot_invoke_human_only_command() -> None:
 
 # Scenario 15
 
-def test_15_approver_and_submitter_may_differ_when_roles_allow_it() -> None:
-    approver = _human("approver-1", roles={ActorRole.APPROVER})
-    submitter = _human("submitter-1", roles={ActorRole.SUBMITTER})
+def test_15_owner_approval_may_be_executed_by_authorized_service() -> None:
+    owner = _human()
+    submitter = _service("order-worker")
 
     decision = evaluate_guard(
-        _guard_input(actor=submitter, approved_by=approver, command="SUBMIT_ORDER"),
+        _guard_input(actor=submitter, approved_by=owner, command="SUBMIT_ORDER"),
         state_provider=_StateProvider(state={"market_open": True}),
         authorization_policy=_policy(),
     )
 
     assert decision.status is GuardStatus.PASS
     assert decision.code is GuardCode.PASS
-    assert approver.actor_id != submitter.actor_id
+    assert owner.actor_id == "OWNER"
+    assert submitter.actor_type is ActorType.SERVICE
+
+
+def test_15b_second_human_identity_is_not_allowed() -> None:
+    other_human = _human("OTHER_HUMAN")
+    decision = evaluate_guard(
+        _guard_input(actor=other_human, command="EMERGENCY_HALT"),
+        state_provider=_StateProvider(state={"market_open": True}),
+        authorization_policy=_policy(),
+    )
+    assert decision.status is GuardStatus.BLOCKED
+    assert decision.code is GuardCode.ACTOR_ROLE_FORBIDDEN
 
 
 # Scenario 16

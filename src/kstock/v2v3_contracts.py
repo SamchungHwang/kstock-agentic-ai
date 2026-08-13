@@ -132,6 +132,7 @@ class OrderIntent:
     proposal_id: str
     proposal_hash: str
     environment: str
+    account_ref: str
     symbol: str
     qty: int
     limit_price: int
