@@ -1,0 +1,28 @@
+version: 1
+environments:
+  PAPER:
+    account_ref: PAPER_PRIMARY
+    market: KR_EQUITY
+    products: [COMMON_STOCK, ETF]
+    sessions: [REGULAR]
+    order_types: [LIMIT]
+    data:
+      quote_max_age_seconds: 15
+      account_max_age_seconds: 30
+      open_orders_max_age_seconds: 15
+    long_only: true
+    short_sell_enabled: false
+    derivatives_enabled: false
+  LIVE:
+    account_ref: LIVE_PRIMARY
+    market: KR_EQUITY
+    products: [COMMON_STOCK, ETF]
+    sessions: [REGULAR]
+    order_types: [LIMIT]
+    data:
+      quote_max_age_seconds: 15
+      account_max_age_seconds: 30
+      open_orders_max_age_seconds: 15
+    long_only: true
+    short_sell_enabled: false
+    derivatives_enabled: false

@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import tkinter as tk
 from datetime import datetime
-from tkinter import scrolledtext, ttk
+from tkinter import scrolledtext, simpledialog, ttk
 from uuid import uuid4
 
 from .console_commands import COMMANDS, CommandSpec
 from .console_runner import CommandRunner, RunCallbacks
 from .demo_services import start_console_session
+from .env_config import resolve_kis_hts_user_id
 from .fixed_identity import OWNER_ACTOR_ID, fixed_account_ref, normalize_environment
 from .models import CommandContext
 from .state_store import configure_runtime_environment, read_state
@@ -21,6 +23,60 @@ STATUS_MARK = {
     "ERROR": "✗",
     "UNKNOWN": "✗",
 }
+
+
+def watch_choices(payload: object) -> tuple[tuple[str, str], ...]:
+    """Watch Universe payload를 ``(화면 표시값, 종목코드)``로 정규화한다."""
+    if not isinstance(payload, dict):
+        return ()
+
+    choices: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    members = payload.get("members", [])
+    if not isinstance(members, list):
+        return ()
+
+    for member in members:
+        if not isinstance(member, dict):
+            continue
+        symbol = str(member.get("symbol", "")).strip()
+        if not symbol or symbol in seen:
+            continue
+        seen.add(symbol)
+
+        name = str(member.get("name", "")).strip()
+        sources = member.get("sources", [])
+        groups = member.get("interest_groups", [])
+        try:
+            held_quantity = int(member.get("held_quantity", 0) or 0)
+        except (TypeError, ValueError):
+            held_quantity = 0
+
+        details: list[str] = []
+        if isinstance(groups, (list, tuple)):
+            group_names = [str(group).strip() for group in groups if str(group).strip()]
+            if group_names:
+                details.append("관심: " + "/".join(group_names))
+        if isinstance(sources, (list, tuple)) and "KIS_INTEREST" in sources and not details:
+            details.append("KIS 관심")
+        if held_quantity:
+            details.append(f"보유 {held_quantity:,}주")
+
+        label = "  ".join(part for part in (symbol, name) if part)
+        if details:
+            label += "  [" + " · ".join(details) + "]"
+        choices.append((label, symbol))
+
+    return tuple(choices)
+
+
+def symbol_from_choice(value: str, choices: dict[str, str] | None = None) -> str:
+    """콤보박스 표시값 또는 사람이 직접 입력한 값에서 종목코드를 얻는다."""
+    text = value.strip()
+    if choices and text in choices:
+        return choices[text]
+    first = text.split(maxsplit=1)[0] if text else ""
+    return first if len(first) == 6 and first.isdigit() else text
 
 
 def new_correlation_id() -> str:
@@ -136,11 +192,16 @@ class ConsoleV1App(tk.Tk):
         self.recon_var = tk.StringVar(value="UNKNOWN")
         self.audit_var = tk.StringVar(value="UNKNOWN")
         self.last_result_var = tk.StringVar(value="아직 실행 결과가 없습니다.")
+        self.watch_status_var = tk.StringVar(value="관심종목 목록을 불러오는 중입니다.")
+        self._symbol_by_choice: dict[str, str] = {}
         self.buttons_by_group: dict[str, list[ttk.Button]] = {}
         self._build_ui()
+        self._refresh_watch_selector_from_state()
         self.bind_all("<Control-l>", lambda _event: self._clear_screen_log())
         self.bind_all("<Control-L>", lambda _event: self._clear_screen_log())
         self.after(100, self.refresh_local_state)
+        # GUI가 KIS API를 직접 호출하지 않고 검증된 CLI 경계를 한 번 실행한다.
+        self.after(350, self._sync_interest_on_startup)
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
@@ -348,21 +409,19 @@ class ConsoleV1App(tk.Tk):
             lambda: {"mode": "SUSPENDED"},
             sticky="ew",
         )
-        ttk.Label(frame, text="종목코드").grid(row=2, column=0, sticky="w")
-        self.symbol_entry = ttk.Entry(frame)
-        self.symbol_entry.insert(0, "005930")
+        ttk.Label(frame, text="관심/보유 종목").grid(row=2, column=0, sticky="w")
+        self.symbol_entry = ttk.Combobox(frame, state="normal")
         self.symbol_entry.grid(row=2, column=1, sticky="ew", padx=5)
         self._register_button(
             frame,
             "quote_query",
             2,
             2,
-            lambda: {"symbol": self.symbol_entry.get()},
+            lambda: {"symbol": self._selected_symbol()},
             sticky="ew",
         )
         ttk.Label(frame, text="지정가").grid(row=3, column=0, sticky="w")
         self.price_entry = ttk.Entry(frame)
-        self.price_entry.insert(0, "82400")
         self.price_entry.grid(row=3, column=1, sticky="ew", padx=5)
         self._register_button(
             frame,
@@ -370,21 +429,120 @@ class ConsoleV1App(tk.Tk):
             3,
             2,
             lambda: {
-                "symbol": self.symbol_entry.get(),
+                "symbol": self._selected_symbol(),
                 "price": self.price_entry.get(),
             },
             sticky="ew",
         )
-        self._register_button(frame, "dart_collect", 4, 0, sticky="ew")
-        self._register_button(frame, "dart_replay", 4, 1, sticky="ew")
+        ttk.Label(frame, text="관심그룹 코드").grid(row=4, column=0, sticky="w")
+        self.interest_group_entry = ttk.Entry(frame)
+        self.interest_group_entry.insert(0, "")
+        self.interest_group_entry.grid(row=4, column=1, sticky="ew", padx=5)
+        self._register_button(frame, "interest_groups", 4, 2, sticky="ew")
+        sync_button = self._register_button(
+            frame,
+            "interest_sync",
+            5,
+            0,
+            lambda: {"group_code": self.interest_group_entry.get()},
+            sticky="ew",
+        )
+        sync_button.configure(text="KIS 관심종목 새로고침")
+        sync_button.configure(command=self._request_interest_sync)
+        self._register_button(frame, "interest_show", 5, 1, sticky="ew")
+        ttk.Label(
+            frame,
+            textvariable=self.watch_status_var,
+            wraplength=720,
+        ).grid(row=5, column=2, sticky="w", padx=5)
+        self._register_button(frame, "dart_collect", 6, 0, sticky="ew")
+        self._register_button(frame, "dart_replay", 6, 1, sticky="ew")
         ttk.Label(
             frame,
             text=(
-                "외부 조회는 버튼으로만 실행합니다. 거래정지 시세 모드는 "
-                "display_price와 risk_price가 분리되는지 시험합니다."
+                "시작할 때 KIS 관심종목을 한 번 동기화하며, 이후에는 새로고침 버튼으로만 다시 조회합니다. "
+                "빈 그룹 코드는 모든 관심그룹을 뜻합니다. 보유종목은 관심목록에서 빠져도 선택 목록에 유지됩니다."
             ),
             wraplength=720,
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=10)
+        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=10)
+        self.interest_detail = scrolledtext.ScrolledText(
+            frame,
+            height=12,
+            wrap=tk.WORD,
+            state=tk.DISABLED,
+        )
+        self.interest_detail.grid(row=8, column=0, columnspan=3, sticky="nsew")
+        frame.rowconfigure(8, weight=1)
+
+    def _selected_symbol(self) -> str:
+        return symbol_from_choice(self.symbol_entry.get(), self._symbol_by_choice)
+
+    def _set_watch_choices(self, payload: object) -> None:
+        choices = watch_choices(payload)
+        current_text = self.symbol_entry.get().strip()
+        was_known_choice = current_text in self._symbol_by_choice
+        current_symbol = symbol_from_choice(current_text, self._symbol_by_choice)
+        self._symbol_by_choice = dict(choices)
+        labels = tuple(label for label, _symbol in choices)
+        self.symbol_entry.configure(values=labels)
+
+        selected_label = next(
+            (label for label, symbol in choices if symbol == current_symbol),
+            "",
+        )
+        if selected_label:
+            self.symbol_entry.set(selected_label)
+        elif (not current_text or was_known_choice) and labels:
+            self.symbol_entry.set(labels[0])
+        elif was_known_choice:
+            self.symbol_entry.set("")
+
+        if labels:
+            self.watch_status_var.set(
+                f"관심종목과 보유종목 {len(labels)}개를 선택할 수 있습니다."
+            )
+        else:
+            self.watch_status_var.set(
+                "저장된 관심종목이 없습니다. KIS 새로고침 또는 종목코드 직접 입력을 사용하십시오."
+            )
+
+    def _refresh_watch_selector_from_state(self) -> None:
+        try:
+            state = read_state()
+            self._set_watch_choices(state.get("watch_universe"))
+        except Exception as exc:
+            self.watch_status_var.set(f"저장된 관심종목을 읽지 못했습니다: {exc}")
+
+    def _sync_interest_on_startup(self) -> None:
+        """시작 시 한 번만 KIS 관심종목을 CLI subprocess로 동기화한다."""
+        self._request_interest_sync()
+
+    def _request_interest_sync(self) -> None:
+        hts_user_id = resolve_kis_hts_user_id()
+        if not hts_user_id:
+            hts_user_id = (
+                simpledialog.askstring(
+                    "KIS 관심종목 사용자 ID",
+                    "한국투자증권 HTS/홈페이지 로그인 ID를 입력하십시오.\n"
+                    "계좌번호가 아닙니다. 입력값은 현재 실행에서만 사용합니다.\n"
+                    "계속 사용하려면 .env에 KIS_HTS_ID=<로그인 ID>를 추가하십시오.",
+                    parent=self,
+                )
+                or ""
+            ).strip()
+            if not hts_user_id:
+                self.watch_status_var.set(
+                    "KIS HTS ID가 없어 증권사 관심종목을 동기화하지 않았습니다. "
+                    "기존 목록 또는 직접 입력을 사용할 수 있습니다."
+                )
+                return
+            # CommandRunner가 만드는 CLI subprocess에만 전달된다. 로그에는 기록하지 않는다.
+            os.environ["KIS_HTS_ID"] = hts_user_id
+
+        self.execute(
+            "interest_sync",
+            {"group_code": self.interest_group_entry.get()},
+        )
 
     def _build_reconcile_panel(self, frame) -> None:
         ttk.Label(
@@ -611,6 +769,13 @@ class ConsoleV1App(tk.Tk):
                 self.kill_detail,
                 json.dumps(payload, ensure_ascii=False, indent=2),
             )
+        elif spec.key in {"interest_groups", "interest_sync", "interest_show"}:
+            self._write_text(
+                self.interest_detail,
+                json.dumps(payload, ensure_ascii=False, indent=2),
+            )
+            if status == "SUCCESS" and spec.key in {"interest_sync", "interest_show"}:
+                self._set_watch_choices(payload)
         elif spec.key in {
             "audit_recent", "audit_trace", "audit_health",
             "audit_fail_on", "audit_fail_off",
@@ -656,6 +821,7 @@ class ConsoleV1App(tk.Tk):
             self.kill_var.set(state["kill_switch"]["state"])
             self.recon_var.set(state["last_reconciliation"]["status"])
             self.audit_var.set(state.get("audit_health", "UNKNOWN"))
+            self._set_watch_choices(state.get("watch_universe"))
         except Exception as exc:
             self.gate_var.set("UNKNOWN")
             self.kill_var.set("UNKNOWN")

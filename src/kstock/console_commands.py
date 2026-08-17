@@ -66,6 +66,10 @@ def _buying_power(ctx: CommandContext) -> list[str]:
     ]
 
 
+def _interest_group(ctx: CommandContext) -> list[str]:
+    return ["--group-code", str(ctx.values.get("group_code", ""))]
+
+
 def _mode(ctx: CommandContext) -> list[str]:
     return ["--mode", str(ctx.values.get("mode", ""))]
 
@@ -97,6 +101,9 @@ COMMANDS: dict[str, CommandSpec] = {
     "buying_power": CommandSpec("buying_power", "매수가능금액", ("account", "buying-power"), RiskClass.R0, LockGroup.QUERY, _buying_power),
     "dart_collect": CommandSpec("dart_collect", "OpenDART 수집", ("dart", "collect"), RiskClass.R0, LockGroup.QUERY, _none),
     "dart_replay": CommandSpec("dart_replay", "저장본 재현", ("dart", "replay"), RiskClass.R0, LockGroup.QUERY, _none),
+    "interest_groups": CommandSpec("interest_groups", "관심그룹 조회", ("interest", "groups"), RiskClass.R0, LockGroup.QUERY, _none),
+    "interest_sync": CommandSpec("interest_sync", "관심종목 동기화", ("interest", "sync"), RiskClass.R0, LockGroup.QUERY, _interest_group),
+    "interest_show": CommandSpec("interest_show", "Watch 대상 보기", ("interest", "show"), RiskClass.R0, LockGroup.QUERY, _none),
     "quote_live": CommandSpec("quote_live", "시세 LIVE", ("demo", "quote-mode"), RiskClass.R0, LockGroup.DEMO, _mode),
     "quote_suspended": CommandSpec("quote_suspended", "거래정지 시세", ("demo", "quote-mode"), RiskClass.R0, LockGroup.DEMO, _mode),
 

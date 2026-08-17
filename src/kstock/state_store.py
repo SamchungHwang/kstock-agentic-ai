@@ -70,12 +70,12 @@ def data_dir() -> Path:
 
 def _default_state() -> dict[str, Any]:
     return {
-        "version": 4,
+        "version": 5,
         "environment": current_runtime_environment(),
         "account_ref": current_account_ref(),
         "owner_actor_id": OWNER_ACTOR_ID,
-        # 7장에서 사용하는 단일 실행세계 통제 버전. 다계좌 GLOBAL/ACCOUNT 이중 epoch는 쓰지 않는다.
-        "control_epoch": 0,
+        # 7장에서 사용하는 단일 실행세계 통제 버전. 다계좌용 이중 버전은 쓰지 않는다.
+        "control_version": 0,
         "session": {
             "session_id": None,
             "started_at": None,
@@ -111,6 +111,8 @@ def _default_state() -> dict[str, Any]:
         "account_snapshot": None,
         "quote_snapshot": None,
         "buying_power_snapshot": None,
+        "interest_snapshot": None,
+        "watch_universe": None,
         "dart": {
             "last_collect": None,
             "saved_batches": [],
@@ -194,6 +196,9 @@ def ensure_state() -> None:
             current = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return
+        # 이전 초안에서 사용한 control_epoch가 있으면 control_version으로 1회 마이그레이션한다.
+        if "control_version" not in current and "control_epoch" in current:
+            current["control_version"] = current.pop("control_epoch")
         merged = _deep_fill(current, default)
         merged["version"] = default["version"]
         _enforce_fixed_identity(merged)

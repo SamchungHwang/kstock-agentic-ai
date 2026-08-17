@@ -167,3 +167,27 @@ python .\tools\doctor_env.py --environment PAPER
 전체 점검과 계좌·매수가능금액 조회는 환경변수가 누락되거나 형식이 잘못되면
 `KIS_ENV_INVALID`로 차단한다. 앱키와 시크릿 원문은 JSONL·감사 로그·화면에
 출력하지 않는다.
+
+## KIS 관심종목을 Watch 대상으로 사용
+
+`.env`에 `KIS_HTS_ID`를 설정하면 KIS HTS/MTS에 저장한 관심종목을 조회할 수 있다.
+이 값은 계좌번호가 아니라 한국투자 HTS/홈페이지 로그인 ID다. 기존
+`KIS_HTS_USER_ID`, `KIS_USER_ID`, `KIS_ID`, `KIS_LOGIN_ID`, `HTS_ID`,
+`MY_HTSID` 키도 호환용으로 읽는다.
+K-Stock의 실제 Watch 대상은 **현재 고정계좌 보유종목 + KIS 관심종목**의 합집합이다.
+
+```powershell
+python tools/interest.py --environment PAPER --groups
+python tools/interest.py --environment PAPER --sync
+python tools/interest.py --environment PAPER --show
+```
+
+특정 관심그룹만 가져오려면 `--sync --group 001`을 사용한다. LIVE에서는 `--environment LIVE`를 사용한다.
+관심종목 동기화는 조회 전용이며 주문 권한을 만들지 않는다.
+
+운영 콘솔은 시작할 때 이 동기화를 한 번 실행하고, `조회` 탭의 `관심/보유 종목`
+목록에 종목코드·종목명·관심그룹·보유수량을 표시한다. 목록에서 선택한 종목은
+현재가와 매수가능금액 조회에 사용된다. KIS 조회가 실패하면 마지막 정상 목록을
+유지하며, 콤보박스에 종목코드를 직접 입력하는 방식도 계속 사용할 수 있다.
+ID가 설정되지 않았다면 콘솔이 시작할 때 입력창을 표시하며, 입력값은 해당 실행에만
+사용한다. 매번 입력하지 않으려면 `.env`에 `KIS_HTS_ID=<로그인 ID>`를 추가한다.

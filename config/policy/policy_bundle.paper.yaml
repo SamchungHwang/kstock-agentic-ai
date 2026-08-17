@@ -1,0 +1,10 @@
+version: 1
+policy_id: kstock-personal-default
+policy_version: "2026-08-16.paper.1"
+environment: PAPER
+references:
+  risk_classes: risk_classes.yaml
+  automation_levels: automation_levels.yaml
+  action_permissions: action_permissions.yaml
+  odd: odd.yaml
+  kill_switch: kill_switch.yaml

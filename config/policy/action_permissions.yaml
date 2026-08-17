@@ -1,0 +1,38 @@
+version: 1
+permissions:
+  MARKET_DATA_READ:
+    PAPER: {min_runtime_level: A0, max_automation: A3, actors: [OWNER, SERVICE]}
+    LIVE:  {min_runtime_level: A0, max_automation: A3, actors: [OWNER, SERVICE]}
+  AUDIT_READ:
+    PAPER: {min_runtime_level: A0, max_automation: A3, actors: [OWNER, SERVICE]}
+    LIVE:  {min_runtime_level: A0, max_automation: A3, actors: [OWNER, SERVICE]}
+  JUDGE_DRAFT_CREATE:
+    PAPER: {min_runtime_level: A1, max_automation: A2, actors: [OWNER, SERVICE]}
+    LIVE:  {min_runtime_level: A1, max_automation: A2, actors: [OWNER, SERVICE]}
+  ORDER_INTENT_CREATE:
+    PAPER: {min_runtime_level: A2, max_automation: A2, actors: [OWNER, SERVICE], owner_approval_required: true}
+    LIVE:  {min_runtime_level: A2, max_automation: A2, actors: [OWNER, SERVICE], owner_approval_required: true}
+  APPROVAL_GRANT:
+    PAPER: {min_runtime_level: A0, max_automation: A0, actors: [OWNER]}
+    LIVE:  {min_runtime_level: A0, max_automation: A0, actors: [OWNER]}
+  AUTOMATION_PROMOTE:
+    PAPER: {min_runtime_level: A0, max_automation: A0, actors: [OWNER]}
+    LIVE:  {min_runtime_level: A0, max_automation: A0, actors: [OWNER]}
+  AUTOMATION_DEMOTE:
+    PAPER: {min_runtime_level: A0, max_automation: A3, actors: [OWNER, SYSTEM_GUARDIAN]}
+    LIVE:  {min_runtime_level: A0, max_automation: A3, actors: [OWNER, SYSTEM_GUARDIAN]}
+  ODD_REENTRY:
+    PAPER: {min_runtime_level: A0, max_automation: A0, actors: [OWNER]}
+    LIVE:  {min_runtime_level: A0, max_automation: A0, actors: [OWNER]}
+  BROKER_SUBMIT:
+    PAPER: {min_runtime_level: A2, max_automation: A2, actors: [OWNER, SERVICE], owner_approval_required: true}
+    LIVE:  {min_runtime_level: A2, max_automation: A2, actors: [OWNER, SERVICE], owner_approval_required: true}
+  BROKER_CANCEL:
+    PAPER: {min_runtime_level: A0, max_automation: A2, actors: [OWNER, SERVICE]}
+    LIVE:  {min_runtime_level: A0, max_automation: A2, actors: [OWNER, SERVICE]}
+  KILL_SWITCH_ESCALATE:
+    PAPER: {min_runtime_level: A0, max_automation: A3, actors: [OWNER, SYSTEM_GUARDIAN]}
+    LIVE:  {min_runtime_level: A0, max_automation: A3, actors: [OWNER, SYSTEM_GUARDIAN]}
+  KILL_SWITCH_DEACTIVATE:
+    PAPER: {min_runtime_level: A0, max_automation: A0, actors: [OWNER]}
+    LIVE:  {min_runtime_level: A0, max_automation: A0, actors: [OWNER]}

@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from kstock.env_config import (
+    KIS_HTS_ID_ENV_KEYS,
     doctor_environment,
     load_dotenv_file,
     resolve_kis_credentials,
+    resolve_kis_hts_user_id,
 )
 
 
@@ -75,3 +77,23 @@ def test_paper_and_live_use_distinct_fixed_logical_accounts(monkeypatch):
     assert live.account_ref == "LIVE_PRIMARY"
     assert paper.account_ref != live.account_ref
     assert paper.account_display != live.account_display
+
+
+def test_hts_user_id_uses_standard_key_then_legacy_aliases(monkeypatch):
+    for key in KIS_HTS_ID_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+
+    monkeypatch.setenv("KIS_USER_ID", "legacy-user")
+    assert resolve_kis_hts_user_id(load_dotenv=False) == "legacy-user"
+
+    monkeypatch.setenv("KIS_HTS_ID", "standard-user")
+    assert resolve_kis_hts_user_id(load_dotenv=False) == "standard-user"
+
+
+def test_hts_user_id_never_falls_back_to_account_or_app_key(monkeypatch):
+    for key in KIS_HTS_ID_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("KIS_PAPER_ACCOUNT", "50012345-01")
+    monkeypatch.setenv("KIS_PAPER_APP_KEY", "not-a-user-id")
+
+    assert resolve_kis_hts_user_id(load_dotenv=False) == ""

@@ -1,0 +1,8 @@
+version: 1
+states:
+  NORMAL:
+    allow_directions: [INCREASE, NEUTRAL, REDUCE, EXIT]
+  NO_NEW_RISK:
+    allow_directions: [NEUTRAL, REDUCE, EXIT]
+  HARD_FROZEN:
+    allow_broker_state_change: false

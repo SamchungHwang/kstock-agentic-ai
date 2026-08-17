@@ -32,6 +32,7 @@ from .demo_services import (
     seed_unknown_order,
     start_console_session,
 )
+from .interest_services import current_watch_universe, interest_groups_query, sync_interest_watchlist
 from .models import ResultStatus
 from .state_store import configure_runtime_environment
 
@@ -51,6 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mode", default="")
     parser.add_argument("--limit", type=int, default=50)
     parser.add_argument("--target-correlation-id", default="")
+    parser.add_argument("--group-code", default="")
     return parser
 
 
@@ -81,6 +83,13 @@ def dispatch(args):
         return dart_collect(corr)
     if key == ("dart", "replay"):
         return dart_replay(corr)
+
+    if key == ("interest", "groups"):
+        return interest_groups_query(corr, args.environment)
+    if key == ("interest", "sync"):
+        return sync_interest_watchlist(corr, args.environment, group_code=args.group_code)
+    if key == ("interest", "show"):
+        return current_watch_universe(corr)
 
     if key == ("reconcile", "run"):
         return reconcile(corr)

@@ -30,6 +30,7 @@ class ThesisStatus(str, Enum):
 
 class RiskDirection(str, Enum):
     INCREASE = "INCREASE"
+    NEUTRAL = "NEUTRAL"
     REDUCE = "REDUCE"
     EXIT = "EXIT"
 

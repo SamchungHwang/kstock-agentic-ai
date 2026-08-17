@@ -7,7 +7,7 @@ name = "kstock-console-v1"
 version = "0.9.0"
 description = "K-Stock Agentic AI - single user, one fixed account per PAPER/LIVE environment"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["PyYAML>=6.0"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

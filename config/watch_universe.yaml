@@ -1,0 +1,11 @@
+version: 1
+source:
+  include_holdings: true
+  include_kis_interest: true
+  interest_groups: ALL
+merge:
+  key: symbol
+  keep_holding_even_if_not_interested: true
+notes:
+  - KIS 관심종목은 HTS 사용자 ID 기준으로 조회한다.
+  - 실제 경제 상태는 현재 PAPER_PRIMARY 또는 LIVE_PRIMARY 고정계좌가 소유한다.

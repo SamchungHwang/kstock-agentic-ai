@@ -14,6 +14,15 @@ ENV_LIVE: Final[str] = "LIVE"
 _TRUE_VALUES: Final[set[str]] = {"1", "true", "yes", "on"}
 _ACCOUNT_RE: Final[re.Pattern[str]] = re.compile(r"^\d{8}$")
 _PRODUCT_RE: Final[re.Pattern[str]] = re.compile(r"^\d{2}$")
+KIS_HTS_ID_ENV_KEYS: Final[tuple[str, ...]] = (
+    "KIS_HTS_ID",
+    "KIS_HTS_USER_ID",
+    "KIS_USER_ID",
+    "KIS_ID",
+    "KIS_LOGIN_ID",
+    "HTS_ID",
+    "MY_HTSID",
+)
 
 
 def project_root() -> Path:
@@ -161,6 +170,24 @@ def resolve_kis_credentials(
     )
 
 
+def resolve_kis_hts_user_id(
+    *,
+    dotenv_path: Path | None = None,
+    load_dotenv: bool = True,
+) -> str:
+    """관심종목 API에 필요한 HTS 로그인 ID를 호환 키에서 찾는다.
+
+    계좌번호와 App Key는 HTS 사용자 ID가 아니므로 대체값으로 사용하지 않는다.
+    """
+    if load_dotenv:
+        load_dotenv_file(dotenv_path, override=False)
+    for key in KIS_HTS_ID_ENV_KEYS:
+        value = os.environ.get(key, "").strip()
+        if value:
+            return value
+    return ""
+
+
 def mask_account(value: str) -> str:
     if not value:
         return ""
@@ -175,9 +202,14 @@ def mask_account(value: str) -> str:
 
 def doctor_environment(environment: str) -> dict[str, object]:
     creds = resolve_kis_credentials(environment)
+    hts_user_id = resolve_kis_hts_user_id(load_dotenv=False)
     errors = creds.validation_errors()
     return {
         "status": "PASS" if not errors else "FAIL",
         "credentials": creds.safe_summary(),
+        "interest_watchlist": {
+            "hts_user_id_configured": bool(hts_user_id),
+            "accepted_keys": list(KIS_HTS_ID_ENV_KEYS),
+        },
         "errors": errors,
     }

@@ -12,6 +12,7 @@ def run(args: list[str]) -> None:
 def main() -> int:
     run([sys.executable, "tools/console.py", "--check"])
     run([sys.executable, "tools/check_layering.py"])
+    run([sys.executable, "tools/validate_ch7_policy.py"])
     run([sys.executable, "-m", "pytest"])
     return 0
 
